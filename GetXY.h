@@ -12,7 +12,20 @@
 #define GetXY_
 
 
-
+//-------------------
+Uint16 LoadingEnd = 0;
+Uint16 XcordTemp = 0;
+Uint16 YcordTemp = 0;
+Uint16 X1cord = 0;
+Uint16 X2cord = 0;
+Uint16 Y1cord = 0;
+Uint16 Y2cord = 0;
+double DeltaX = 2.9805555;
+double DeltaY = 1.9423755;
+Uint16 Xleft  = 888;
+Uint16 Xright = 170;
+Uint16 Yleft  = 736;
+Uint16 Yright = 112;
 
 
 Int16 GetX( )

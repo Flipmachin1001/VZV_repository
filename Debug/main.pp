@@ -1,47 +1,46 @@
 # FIXED
 
-D:/___/VZV1-M4/Debug/main.obj: ../main.c
-D:/___/VZV1-M4/Debug/main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdlib.h
-D:/___/VZV1-M4/Debug/main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/linkage.h
-D:/___/VZV1-M4/Debug/main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/string.h
-D:/___/VZV1-M4/Debug/main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdio.h
-D:/___/VZV1-M4/Debug/main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdarg.h
-D:/___/VZV1-M4/Debug/main.obj: ../data_types.h
-D:/___/VZV1-M4/Debug/main.obj: ../register_system.h
-D:/___/VZV1-M4/Debug/main.obj: ../register_cpu.h
-D:/___/VZV1-M4/Debug/main.obj: ../register_RTC.h
-D:/___/VZV1-M4/Debug/main.obj: ../rtc.h
-D:/___/VZV1-M4/Debug/main.obj: ../math.h
-D:/___/VZV1-M4/Debug/main.obj: ../tms320.h
-D:/___/VZV1-M4/Debug/main.obj: ../dsplib.h
-D:/___/VZV1-M4/Debug/main.obj: ../misc.h
-D:/___/VZV1-M4/Debug/main.obj: ../stdio.h
-D:/___/VZV1-M4/Debug/main.obj: ../evm5515.h
-D:/___/VZV1-M4/Debug/main.obj: ../i2c.h
-D:/___/VZV1-M4/Debug/main.obj: ../evm5515_gpio.h
-D:/___/VZV1-M4/Debug/main.obj: ../lcd.h
-D:/___/VZV1-M4/Debug/main.obj: ../icon.h
-D:/___/VZV1-M4/Debug/main.obj: ../font.h
-D:/___/VZV1-M4/Debug/main.obj: ../LCD_Library.h
-D:/___/VZV1-M4/Debug/main.obj: ../LCD_Initialize.h
-D:/___/VZV1-M4/Debug/main.obj: ../i2c_lib.h
-D:/___/VZV1-M4/Debug/main.obj: ../spirom.h
-D:/___/VZV1-M4/Debug/main.obj: ../spi.h
-D:/___/VZV1-M4/Debug/main.obj: ../sdram.h
-D:/___/VZV1-M4/Debug/main.obj: ../evm5515_emif.h
-D:/___/VZV1-M4/Debug/main.obj: ../NandFlash.h
-D:/___/VZV1-M4/Debug/main.obj: ../uart.h
-D:/___/VZV1-M4/Debug/main.obj: ../timer.h
-D:/___/VZV1-M4/Debug/main.obj: ../control.h
-D:/___/VZV1-M4/Debug/main.obj: ../i2s_bypass1.h
-D:/___/VZV1-M4/Debug/main.obj: ../dma_bypass1.h
-D:/___/VZV1-M4/Debug/main.obj: ../ref_data_bypass.h
-D:/___/VZV1-M4/Debug/main.obj: ../menu.h
-D:/___/VZV1-M4/Debug/main.obj: ../I2S_Library.h
-D:/___/VZV1-M4/Debug/main.obj: ../FunctionRTC.h
-D:/___/VZV1-M4/Debug/main.obj: ../Power.h
-D:/___/VZV1-M4/Debug/main.obj: ../Expander.h
-D:/___/VZV1-M4/Debug/main.obj: ../GetXY.h
+main.obj: ../main.c
+main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdlib.h
+main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/linkage.h
+main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/string.h
+main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdio.h
+main.obj: c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdarg.h
+main.obj: ../data_types.h
+main.obj: ../register_system.h
+main.obj: ../register_cpu.h
+main.obj: ../register_RTC.h
+main.obj: ../rtc.h
+main.obj: ../math.h
+main.obj: ../tms320.h
+main.obj: ../dsplib.h
+main.obj: ../misc.h
+main.obj: ../stdio.h
+main.obj: ../evm5515.h
+main.obj: ../i2c.h
+main.obj: ../evm5515_gpio.h
+main.obj: ../lcd.h
+main.obj: ../icon.h
+main.obj: ../font.h
+main.obj: ../LCD_Library.h
+main.obj: ../LCD_Initialize.h
+main.obj: ../i2c_lib.h
+main.obj: ../spirom.h
+main.obj: ../spi.h
+main.obj: ../sdram.h
+main.obj: ../evm5515_emif.h
+main.obj: ../NandFlash.h
+main.obj: ../uart.h
+main.obj: ../timer.h
+main.obj: ../control.h
+main.obj: ../i2s_bypass1.h
+main.obj: ../dma_bypass1.h
+main.obj: ../ref_data_bypass.h
+main.obj: ../SigProcessor.h
+main.obj: ../I2S_Library.h
+main.obj: ../FunctionRTC.h
+main.obj: ../menu.h
+main.obj: ../Memory.h
 
 ../main.c: 
 c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdlib.h: 
@@ -79,9 +78,8 @@ c:/ti/ccsv6/tools/compiler/c5500_4.4.1/include/stdarg.h:
 ../i2s_bypass1.h: 
 ../dma_bypass1.h: 
 ../ref_data_bypass.h: 
-../menu.h: 
+../SigProcessor.h: 
 ../I2S_Library.h: 
 ../FunctionRTC.h: 
-../Power.h: 
-../Expander.h: 
-../GetXY.h: 
+../menu.h: 
+../Memory.h: 
