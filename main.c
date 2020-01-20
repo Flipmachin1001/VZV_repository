@@ -1,6 +1,9 @@
 //  Vzv-1M5
 //  Copyright 2011 by Shubin Vladimir.
 //  Refactoryng by Alexander Mikhalev 2019 Deleted Over 9000 Lines Of Code
+#define Stand_Stoping 2
+#define Stand_Runing 1
+#define Stand_Idle 0
 #define MOD_Acc 0
 #define MOD_Vel 1
 #define MOD_Dis 2
@@ -52,10 +55,8 @@
 #define LEFT 	159    				// LEFT
 #define UP 		160    				// UP
 #define DOWN 	161    				// DOWN
-#define RIHT 	162    				// RIHT 
-
-
-
+#define RIHT 	162    				// RIHT
+#define RIGHT_UP 34					// RIGHT_UP
 
 #include <stdlib.h>
 #include <string.h>
@@ -96,7 +97,12 @@
 #include "menu.h"
 #include "Memory.h"
 
+
 extern void AIC3254_init(void);
+
+char ADRUINO_CMD = ' ', ADRUINO_PREV_CMD = ' ';
+Uint32 ADRUINO_Data = 0, ADRUINO_DATA_Prev = 0;
+Uint16 ARDUINO_RMS = 0;
 
 Uint8 StopWatchHour = 0;
 Uint8 StopWatchMinut = 0;
@@ -116,9 +122,13 @@ Uint16 SpectrDiv = 1;
 Int16  SpectrKur = 4;
 Uint16 SpectrWid = 1;
 Uint16 SpectrNul = 0;
-Uint16 ADRUINO_Data = 0;
 
 Uint32 shifft = 0x314000;
+
+int KeyDown = 0;
+int KeyUp = 0;
+int KeyRegId = 1;
+int HoldTime = 0;
 
 
 double Temper  = 0.0;
@@ -202,7 +212,7 @@ int Temp_Bat = 0;
 
 Uint8 TTT = 0;
 
-Uint8 StandStatus = 0; //Idle = 0; Runing = 1; Stoping = 2;
+int StandStatus = 0; //Idle = 0; Runing = 1; Stoping = 2;
 
 
 void TAS5424_ON(void)
@@ -318,10 +328,11 @@ interrupt void INT1_Isr(void) {}
 
 //			        Прерывание от клаивиатуры								*
 //  ----------------------------------------------------------------------- *
-interrupt void INT0_Isr(void)
-{		
+char FREQ_MODE = 0;
 
-	Uint16 i,temp, Key,Id;
+void KeyBoardEvent(char Key, char FREQ_MODE)
+{
+	Uint16 i,temp,Id;
 	double SetDisp;
 	int FreqId;
 
@@ -331,7 +342,7 @@ interrupt void INT0_Isr(void)
     USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 1 );                                                                                                                                                                                                                                                                                    	                                            
    	USBSTK5515_I2C_read( TCA8418_I2C_ADDR, cmd, 1 );	// чтение кода клавиатуры
    	//printf("Key = %i",cmd[0]);
-   	Key = cmd[0];
+
    	wait(100);
    	if(cmd[0] > 100)
 	{															        	
@@ -345,7 +356,13 @@ interrupt void INT0_Isr(void)
    		Key = 0;
    		IsSleep = 0;
    		SetDisplayLigth(liht);
-   	} else Key = cmd[0];
+   	} else
+   		if (Key == 0)
+   			{
+   				  Key = cmd[0];
+   				  KeyUp = Key;
+   			} else KeyUp = 0;
+
 
 switch (regim)
 {
@@ -467,6 +484,7 @@ case 1111: case 1112:
 			  Temp_A=1;
 			  Temp_REG=0;
 			  PrintControlHelp("");
+		      StandStatus = Stand_Runing;
 			  if(reg_frequency <= LaserStartFreq)
         		{
 				 	LaserON();
@@ -496,7 +514,8 @@ case 1113: case 11132:
    {
    	   case MENU: 	PrintMainMenu(0); break;
    	   case LEFT:
-   		   	   	   ChangeFreq(-1);
+   		   	   	   reg_frequency--;
+   		   	   	   LCD_Freq(reg_frequency,BLACK);
    		   	   	   if(reg_frequency > LaserStartFreq)
    		   	   	   {
    		   	   		   if (regim !=1113) LaserOFF();
@@ -509,12 +528,14 @@ case 1113: case 11132:
    		   	   	   }
    		   	   	   KUS_ACC = GetKUSFromTable(AccelarationTable,reg_frequency/10,(float)reg_acseleration/10);
    		   	   	   spi_sin(reg_frequency);
+
    		   	   	   break;
    	   case RIHT:
    			 	   if(code == Calibr_CODE) Save_All_Coeff();
    				   else
    						{
-   						ChangeFreq(1);
+   					   	reg_frequency++;
+   					   	LCD_Freq(reg_frequency,BLACK);
    						if(reg_frequency > LaserStartFreq)
    							{
    							if (regim !=1113) LaserOFF();
@@ -532,9 +553,9 @@ case 1113: case 11132:
    	   case ENTER:
    		   	   	/*spi_Kus(0);
 				TAS5424_OFF();    
-				LaserOFF();*/
-
-        		Temp_A=0;        		        		        		    	
+				LaserOFF();
+        		Temp_A=0;*/
+   		   	    StandStatus = Stand_Stoping;
         		PrintAccMenu(0);
         		break;
    	   case UP:
@@ -1211,6 +1232,12 @@ break;
     SYS_GlobalIntEnable();
 }
 
+interrupt void INT0_Isr(void)
+{
+	KeyBoardEvent(0,0);
+}
+
+
 // ------------------------------------------------------------------------	*
 //							        RTC_Isr									*
 //  ----------------------------------------------------------------------- *
@@ -1230,6 +1257,8 @@ interrupt void RTC_Isr(void)
     int GraphPoint,GraphPointPrev;
     int GrapFrameStep=15;
     double SetDisp;
+    unsigned char buff[20];
+    Uint16 I_RMS = 0;
     SYS_GlobalIntDisable();
 	//clear RTC int flag
     //IFR1 = 0x0008;
@@ -1302,12 +1331,102 @@ interrupt void RTC_Isr(void)
     	EVM5515_GPIO_setOutput(26,0);
     	ls5 = 10;    	 
 	}		
+
+
+	//шлем текущуй режим вибростенда;
+	buff[0] = regim ;
+	buff[1] = regim >> 8;
+
+	//шлем текущую частоту вибростенда
+	buff[2] = reg_frequency & 0x000000FF;
+	buff[3] = (reg_frequency & 0x0000FF00) >> 8;
+	buff[4] = (reg_frequency & 0x00FF0000) >> 16;
+	buff[5] = (reg_frequency & 0xFF000000) >> 24;
+
+	//printf("%x %x %x %x\n",buff[5],buff[4],buff[3],buff[2]);
+
+	//шлем теущее ускорение
+	buff[6] = ARDUINO_RMS;
+	buff[7] = ARDUINO_RMS >> 8;
+
+	//шлем последнюю принятую команду обратно
+		//cmd[8] = ADRUINO_CMD;
+
+		USBSTK5515_I2C_write( ADRUINO_SLAVE, buff, 8 );
+
+	    waitusec(10);
+		//Читаем команду
+		USBSTK5515_I2C_read ( ADRUINO_SLAVE, buff, 8 );
+
+		I_RMS = (buff[6] << 8)| buff[7];
+
+
+		//CRC8 = Crc8 (buff,6);
+		//if (CRC8 == buff[6])
+		//{
+			//Shift Registers
+
+			if ((buff[0]> '0') && (buff[0] < '9'))
+			{
+			  ADRUINO_PREV_CMD = ADRUINO_CMD;
+			  ADRUINO_DATA_Prev = ADRUINO_Data;
+
+			  ADRUINO_CMD = buff[0];
+			  ADRUINO_Data = (Uint32)(buff[1]-48)*10000+(buff[2]-48)*1000+(buff[3]-48)*100+(buff[4]-48)*10+(buff[5]-48);
+
+			  //I_RMS = (buff[6] << 8)| buff[7];
+			}
+
+			if ((ADRUINO_CMD != ADRUINO_PREV_CMD) || (ADRUINO_Data != ADRUINO_DATA_Prev))
+				{
+					switch (ADRUINO_CMD)
+					{
+						case '2': //CMD_CHANGE_MODE
+						   switch (buff[5])
+						   {
+							   case '1': regim = 111; MenuCursor = 0; KeyBoardEvent(ENTER,0); break;
+							   case '2': regim = 112; MenuCursor = 1; KeyBoardEvent(ENTER,0); break;
+							   case '3': regim = 113; MenuCursor = 2; KeyBoardEvent(ENTER,0); break;
+						   }
+						   break;
+
+						case '3': //CMD_CHANGE_FREQ
+							reg_frequency = ADRUINO_Data;
+							if ((regim == 1113)||(regim == 1114)||(regim == 11132)||(regim == 11142)) KeyBoardEvent(LEFT,1);
+							if ((regim == 1123)||(regim == 1124)||(regim == 11232)||(regim == 11242)) KeyBoardEvent(LEFT,1);
+							if ((regim == 1133)||(regim == 1134)||(regim == 11332)||(regim == 11342)) KeyBoardEvent(LEFT,1);
+							LCD_Freq(reg_frequency,BLACK);
+							break;
+						case '4': //CMD_CHANGE_ACC
+							reg_acseleration = ADRUINO_Data;
+							LCD_Acsel(reg_acseleration,BLACK);
+							break;
+						case '5': //CMD_CHANGE_VEL
+							reg_velosity = ADRUINO_Data;
+							LCD_velosity(reg_velosity);
+							break;
+						case '6': //CMD_CHANGE_DISP
+							reg_displacement = ADRUINO_Data;
+							LCD_displacement(reg_displacement);
+							break;
+						case '7':
+							KeyBoardEvent(ENTER,0);
+							break;
+						case '8':
+							KeyBoardEvent(ENTER,0);
+							break;
+						default: ;
+				}
+			}
+		//}
+
+
 		
     //---------------------------------------------------------------- Acseleration	  
 	  	  
 	if((regim == 1113)||(regim == 1114)||(regim == 11132)||(regim == 11142))
 	{									
-        if ((code == Calibr_CODE))
+	    if ((code == Calibr_CODE))
         {
         	SetDisp = (double) 50712*1.41*(reg_acseleration*0.1)/(reg_frequency*reg_frequency*0.01);
 			if (SetDisp > 1500)
@@ -1325,8 +1444,25 @@ interrupt void RTC_Isr(void)
         }
 
 
+	    if(KeyDown == KeyUp)
+	    {
 
-
+	    HoldTime++;
+	    switch (KeyUp)
+	    {
+	    case RIHT:
+	        reg_frequency = reg_frequency + HoldTime*10;
+	    	spi_sin(reg_frequency);
+	    	LCD_Freq(reg_frequency,BLACK);
+	        break;
+	    case LEFT:
+		    reg_frequency = reg_frequency + HoldTime*10;
+		    spi_sin(reg_frequency);
+		    LCD_Freq(reg_frequency,BLACK);
+		    break;
+	    }
+	    } else HoldTime = 0;
+	    KeyDown = KeyUp;
 		res_rms = RES_ACC+0.5;
         /////////////////////                    		  
 		res_rms_D3 = res_rms_D2;   
@@ -1363,6 +1499,7 @@ interrupt void RTC_Isr(void)
         	if (((float)(res_rms - reg_acseleration)/reg_acseleration) > 0.01)
 		      LCD_Acsel(res_rms,BLACK);
         	else LCD_Acsel(res_rms,BRIGHTGREEN);
+        	ARDUINO_RMS = res_rms;
       	}
       	else 
       	{
@@ -1808,72 +1945,47 @@ interrupt void TXRX_isr(void)
     temp = UART_RBR;
 
     if (reg_frequency <= 10) FrameSize = 500;
-    else
-    {
-    	FrameSize = 250;
-    }
+    	else FrameSize = 250;
 
-
-  	if( Dis_Pro_max < Dis_Pro)
-  	{
-  		Dis_Pro_max = Dis_Pro;
-  	}  	  	    	
-  	if ( Dis_Pro_min > Dis_Pro)
-  	{
-  		Dis_Pro_min = Dis_Pro; 	   	
-  	}  	  	
-  	if( Temp_I >= FrameSize)// 200)
+    if ( Dis_Pro_max < Dis_Pro)	Dis_Pro_max = Dis_Pro;
+  	if ( Dis_Pro_min > Dis_Pro)	Dis_Pro_min = Dis_Pro;
+  	if( Temp_I >= FrameSize)
   	{  		       	    	    	    	    	
     	Dis_Pro_Delta = Dis_Pro_max - Dis_Pro_min;    	
     	RES_DIS = (double)Dis_Pro_Delta / 10.0;
     	Temp_I = 0;
     	Dis_Pro_min = 50000; 	
-    	Dis_Pro_max = 0;    	    
-    	if((regim == 11132)||(regim == 11142))
-		{			    	    	    	
-
-			RES_ACC = (double)RES_DIS * reg_frequency * reg_frequency * 13.9577283992777  / 1000.0 / 10000.0; // V = 2*P*F*  S  *2*P*f/2*1.41*1000 
+    	Dis_Pro_max = 0;
+    	switch (regim)
+    	{
+    	case 11132: case 11142:
+    		RES_ACC = (double)RES_DIS * reg_frequency * reg_frequency * 13.9577283992777  / 1000.0 / 10000.0; // V = 2*P*F*  S  *2*P*f/2*1.41*1000
     		Reg_ACC_D = (double)reg_acseleration;		
 			KUS_1 = (double)Reg_ACC_D/RES_ACC;					
 			KUS_ACC_DR = KUS_ACC_DR * KUS_1;				  				
-			if(KUS_ACC_DR >= 20000)
-      		{
-      			KUS_ACC_DR = 20000;
-      		}        	     
-      		spi_Kus(KUS_ACC_DR);         	    	
-		}
-
-    	else if((regim == 11232)||(regim == 11242))
-		{			    	    	    	
-			
+			if (KUS_ACC_DR >= 20000) KUS_ACC_DR = 20000;
+      		spi_Kus(KUS_ACC_DR);
+      		break;
+    	case 11232: case 11242:
 			RES_VEL = (double)RES_DIS * reg_frequency * 2.221441469 / 1000.0;   	  	 		// V = S*2*P*f/2*1.41*1000								 						 								  				 								  				 								  			
     		Reg_VEL_D = (double)reg_velosity;
 			KUS_2 = (double)Reg_VEL_D/RES_VEL;					
 			KUS_VEL_DR = KUS_VEL_DR * KUS_2;		  						  						  	
-			if(KUS_VEL_DR >= 20000)
-      		{
-      			KUS_VEL_DR = 20000;
-      		}        	     
-      		spi_Kus(KUS_VEL_DR);    
-		}
-    		    	
-    	else if((regim == 11332)||(regim == 11342))
-		{			    	    	    	    	    		     		    	       	    	    	    	    
+			if(KUS_VEL_DR >= 20000) KUS_VEL_DR = 20000;
+      		spi_Kus(KUS_VEL_DR);
+      		break;
+    	case 11332: case 11342:
     		Reg_DIS_D = (double)reg_displacement;    	    
 			KUS_3 = (double)Reg_DIS_D/RES_DIS;					
 			KUS_DIS_DR = KUS_DIS_DR * KUS_3;		  						  						  					
-			if(KUS_DIS_DR >= 20000)
-      		{
-      			KUS_DIS_DR = 20000;
-      		}        	           	      
-      		spi_Kus(KUS_DIS_DR);
-		}
-
-  	}  	  	 
-  	else
-  	{
-  		Temp_I++;		   	   	
-  	}  	  	  	  
+			if(KUS_DIS_DR >= 20000) KUS_DIS_DR = 20000;
+			spi_Kus(KUS_DIS_DR);
+			break;
+    	default:
+    		Temp_I++;
+    		break;
+    	}
+  	}
 }	
 
 
@@ -1942,7 +2054,6 @@ void GPIOConfig()
 	EVM5515_GPIO_setDirection(26,0);	// en_re/de
 	EVM5515_GPIO_setOutput(4,1);
 	EVM5515_GPIO_setOutput(5,1);
-//
 	EVM5515_GPIO_setOutput(21,0);
 	EVM5515_GPIO_setOutput(22,1);
 	EVM5515_GPIO_setOutput(23,0);
@@ -1964,8 +2075,93 @@ void GPIOConfig()
 	waitusec( 60000 );
 }
 
+int PCF8574_INIT()
+{
+	int i;
+	int Status;
+	for (i = 0; i < 10; i++)
+	    {
+	      cmd[0] = 0x0F;
+	      Status = USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
+
+	      cmd[0] = 0x0f;
+	      Status -= USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
+
+	   	  cmd[0] = 0x7F;
+	   	  Status -= USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
+
+	   	  if (Status == 0) return 0;
+	   	  waitusec(1000000);
+	    }
+	return -1;
+}
+
+
+int LM73_INIT(Uint16 Adress)
+{
+	cmd[0] = 0x04;
+	cmd[1] = 0x68;
+	return USBSTK5515_I2C_write(Adress, cmd, 2);
+}
+
+
+int TCA8418_INIT()
+{
+	int Status;
+	waitusec( 65000 );
+	cmd[0] = 0x01;
+	cmd[1] = 0x91; //0x81
+	Status = USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 2 );
+	waitusec( 65000 );
+	cmd[0] = 0x1D;
+	cmd[1] = 0xFF;
+	cmd[2] = 0xFF;
+	cmd[3] = 0x03;
+	Status -= USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 4 );
+	return Status;
+}
+
+
+int TAS5424_INIT()
+{
+	cmd[0] = 0x0C;
+	cmd[1] = 0x90;
+	return USBSTK5515_I2C_write( TAS5424_I2C_ADDR, cmd, 2 );
+}
+
+
+int AD5272_INIT()
+{
+	int Status;
+	int R;
+	//Потенциометр для зарядки аккумулятора
+	cmd[0] = 0x1c;
+	cmd[1] = 0x02;
+	Status = USBSTK5515_I2C_write( AD5272_I2C_ADDR, cmd, 2 );  	// iniChargBat
+	R = 400;     //0x3ff; //0x000; 400;
+	cmd[1] = R;
+	cmd[0] = (((R>>8)&(0x03))|0x04);
+	Status -= USBSTK5515_I2C_write( AD5272_I2C_ADDR, cmd, 2 );  	// writeChargBat
+	return Status;
+}
+
+ChnlData ReadAccData(int BuffCount, ChnlData PrevChnlData)
+{
+	int j;
+	double ACC_D = 0.0;
+	for (j = 0; j < BuffCount; j++)
+	{
+		set_dma0_ch2_i2s0_Lin_non();
+		waitusec( 500000 );
+		PrevChnlData = accelerometr_new(4800,PrevChnlData.Avg);
+		ACC_D = (double)ACC_D + PrevChnlData.Rms;
+	}
+	PrevChnlData.Rms = ACC_D/BuffCount;
+	return PrevChnlData;
+}
+
 void main(void)
- {
+{
 	SYS_GlobalIntDisable();
 	Uint32 i,j;
 	IsSleep = 0;
@@ -1973,146 +2169,60 @@ void main(void)
 	int BuffCount = 1;
 	double CurrAVG = 0;
 	int FrameSize;
-	int PCF8574Test, LM73Adr1Test, LM73Adr2Test, LM73Adr3Test, KeyBoardTest, PowerAmplTest, BatRTest;
 	ChnlData PrevChnlData;
 	PrevChnlData.Avg=0.0;
 	PrevChnlData.Rms=0.0;
-
     InitSystem();
-
    	waitusec( 65000 );
    	spirom_init( );
   	waitusec( 65000 );
-
   	GPIOConfig();
-
     nand_init();
-
     LoadLifeTime();
     Read_All_Coeff();
     if (liht > 100)
       {
         	liht = 99;
       }
-
   	SetDisplayLigth(liht);
     LCD_INI();
     LCD_Clear(BLUE_B);
-
     UART_INIT( );
-
     USBSTK5515_I2C_reset();     						// i2c reset
     waitusec(65000);
-
     print("Загрузка...",110,90,FontRus8x15,WHITE,BLUE_B);
     LCD_Rectangle(20,110,30,130,WHITE);
-
-// ------------------------------------------------------------------------	*
-//						  		PCF8574_INIT							    *                                                                          
-// ------------------------------------------------------------------------ *
-    for (i = 0; i < 10; i++)
-    {
-      cmd[0] = 0x0F;
-      PCF8574Test = USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
-
-      cmd[0] = 0x0f;
-      PCF8574Test -= USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
-   
-   	  cmd[0] = 0x7F;
-   	  PCF8574Test -= USBSTK5515_I2C_write( PCF8574_I2C_ADDR1, cmd, 1 );
-
-   	  if (PCF8574Test == 0) break;
-   	  waitusec(1000000);
-    }
-
+    //инициализация расширителя портов
+    PCF8574Test = PCF8574_INIT();
     LCD_Rectangle(20,110,40,130,WHITE);
-// ------------------------------------------------------------------------	*
-//						  		LM73_INIT	датчики температуры			    *
-// ------------------------------------------------------------------------ *
-	cmd[0] = 0x04;    
-	cmd[1] = 0x68;		
-	LM73Adr1Test = USBSTK5515_I2C_write( LM73_I2C_ADDR1, cmd, 2 );
-
-    cmd[0] = 0x04;
-	cmd[1] = 0x68;		
-	LM73Adr2Test = USBSTK5515_I2C_write( LM73_I2C_ADDR2, cmd, 2 );
-
- 	cmd[0] = 0x04;    
-	cmd[1] = 0x68;		
-	LM73Adr3Test = USBSTK5515_I2C_write( LM73_I2C_ADDR3, cmd, 2 );
+    //Инициализация датчиков тока и напряжения
+    LM73Adr1Test = LM73_INIT(LM73_I2C_ADDR1);
+    LM73Adr2Test = LM73_INIT(LM73_I2C_ADDR2);
+    LM73Adr3Test = LM73_INIT(LM73_I2C_ADDR3);
 	LCD_Rectangle(20,110,60,130,WHITE);
-// ------------------------------------------------------------------------	*
-//						  		TCA8418_INIT	клавиатура				    *
-// ------------------------------------------------------------------------ *
-    waitusec( 65000 );
-    cmd[0] = 0x01;
-    cmd[1] = 0x91; //0x81
-    KeyBoardTest = USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 2 );
-    waitusec( 65000 );
-    cmd[0] = 0x1D;
-    cmd[1] = 0xFF;
-    cmd[2] = 0xFF;
-    cmd[3] = 0x03;
-    KeyBoardTest -= USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 4 );
+	//Инициализация контроллера клавиатуры
+    KeyBoardTest = TCA8418_INIT();
     LCD_Rectangle(20,110,80,130,WHITE);
-
-    //Усилитель мощности
-	cmd[0] = 0x0C;
-	cmd[1] = 0x90;
-	PowerAmplTest = USBSTK5515_I2C_write( TAS5424_I2C_ADDR, cmd, 2 );
-
+    //Инициализация усилителя мощности
+    PowerAmplTest = TAS5424_INIT();
 	LCD_Rectangle(20,110,100,130,WHITE);
-
-	//Потенциометр для зарядки аккумулятора
- 	cmd[0] = 0x1c;
-    cmd[1] = 0x02;
-    BatRTest = USBSTK5515_I2C_write( AD5272_I2C_ADDR, cmd, 2 );  	// iniChargBat
-    Resistance = 400;     //0x3ff; //0x000; 400;
-    cmd[1] = Resistance;
-	cmd[0] = (((Resistance>>8)&(0x03))|0x04);
-	BatRTest -= USBSTK5515_I2C_write( AD5272_I2C_ADDR, cmd, 2 );  	// writeChargBat
-
-
+    //Инициализация потенциометра
+    BatRTest = AD5272_INIT();
 	LCD_Rectangle(20,110,140,130,WHITE);
-    setDMA_address();//
-    set_i2s0_slave();      
+	//
+    setDMA_address();
+    set_i2s0_slave();
+    //Инициализация кодека
     Aic3204_Setup(Rate48k);
 	enable_i2s0();			
     enable_dma_int();
 	set_dma0_ch2_i2s0_Lin_non();
 	LCD_Rectangle(20,110,250,130,WHITE);
-	if (debugMode != 0)
-	{
-		LCD_Clear(BLUE_B);
-		LCD_Rectangle(0,0,319,19,BLACK);
-		print("PCF8474",1,20,Font16x24,WHITE,BLUE_B);
-		printNumI(PCF8574Test,150,20,Font16x24,WHITE,BLUE_B);
-
-		print("LM73-1",1,44,Font16x24,WHITE,BLUE_B);
-		printNumI(LM73Adr1Test,150,44,Font16x24,WHITE,BLUE_B);
-
-		print("LM73-2",1,68,Font16x24,WHITE,BLUE_B);
-		printNumI(LM73Adr2Test,150,68,Font16x24,WHITE,BLUE_B);
-
-		print("LM73-3",1,92,Font16x24,WHITE,BLUE_B);
-		printNumI(LM73Adr3Test,150,92,Font16x24,WHITE,BLUE_B);
-
-		print("KeyBrd",1,116,Font16x24,WHITE,BLUE_B);
-		printNumI(KeyBoardTest,150,116,Font16x24,WHITE,BLUE_B);
-
-		print("PwrAmp",1,140,Font16x24,WHITE,BLUE_B);
-		printNumI(PowerAmplTest,150,140,Font16x24,WHITE,BLUE_B);
-
-		print("PwrRst",1,164,Font16x24,WHITE,BLUE_B);
-		printNumI(BatRTest,150,164,Font16x24,WHITE,BLUE_B);
-	}
+	if (debugMode != 0) PrintDebugInfo();
 	else
 	{
 		LCD_Clear(BLUE_B);
 		LCD_Rectangle(0,0,319,19,BLACK);				// Rectangle
-		LCD_Rectangle(319-22,3,319,16,WHITE);  			// Батарейка
-		LCD_Rectangle(319-22-2,7,319-22-1,12,WHITE);	// Батарейка
-		LCD_Rectangle(298,4,318,15,BLACK);  			// Батарейка
 		print(".",16,4,Num8x12,WHITE,BLACK);
 		print(".",40,4,Num8x12,WHITE,BLACK);
 		PrintAboutScreen();
@@ -2129,101 +2239,66 @@ void main(void)
 	MenuLevel = 100;
 
 
-while (1 > 0)
-{
-//----------------accelerometr-------------------
-		
-	if((regim == 1113)||(regim == 1114))
-	{							      	
-		BuffCount = 480/reg_frequency+1;
-
-		ACC_D = 0.0;
-		for (j = 0; j < BuffCount; j++)
-		{
-			set_dma0_ch2_i2s0_Lin_non();
-			waitusec( 500000 );
-			PrevChnlData = accelerometr_new(4800,PrevChnlData.Avg);
-			ACC_D = (double)ACC_D + PrevChnlData.Rms;
-		}
-			ACC_D = (double)ACC_D/BuffCount;
-
-   		RES_ACC =(double)ACC_D/KUS_ACC;	   // (9.122723749/1.6);  		KUS_ACC;
-		Reg_ACC_D = (double)reg_acseleration;
-		KUS_1 = (double)Reg_ACC_D/RES_ACC;
-		KUS_ACC_DR = KUS_ACC_DR * KUS_1;
-		if(KUS_ACC_DR >= 21483)
-      	{
-      		KUS_ACC_DR = 21483;
-      	}
-
-      	spi_Kus(KUS_ACC_DR);
-	}
-
-//----------------velocimetr-------------------
- 	
- 	else if((regim == 1123)||(regim == 1124))
-	{							      	
- 		BuffCount = 480/reg_frequency+1;
-
- 		ACC_D = 0.0;
- 		for (j = 0; j < BuffCount; j++)
- 		{
- 			set_dma0_ch2_i2s0_Lin_non();
- 			waitusec( 500000 );
- 			PrevChnlData = accelerometr_new(4800,PrevChnlData.Avg);
- 			ACC_D = (double)ACC_D + PrevChnlData.Rms;
- 		}
- 		ACC_D = (double)ACC_D/BuffCount;
-
-		RES_VEL = (double) 112.5*1.41*(ACC_D/KUS_VEL)/(reg_frequency*0.1);
-		Reg_VEL_D = (double)reg_velosity;
-		KUS_2 = (double)Reg_VEL_D/RES_VEL;					
-		KUS_VEL_DR = KUS_VEL_DR * KUS_2;		  						  						  	
-		if(KUS_VEL_DR >= 20000)
-      	{
-      		KUS_VEL_DR = 20000;
-      	}        	     
-      	spi_Kus(KUS_VEL_DR);
-	}
-    
-
-//----------------displasement-------------------  
-	 
-	else if((regim == 1133)||(regim == 1134))
-	{							      	
-		BuffCount = 480/reg_frequency+1;
-		ACC_D = 0.0;
-		for (j = 0; j < BuffCount; j++)
-		{
-		 	set_dma0_ch2_i2s0_Lin_non();
-		 	waitusec( 500000 );
-			PrevChnlData = accelerometr_new(4800,PrevChnlData.Avg);
-			ACC_D = (double)ACC_D + PrevChnlData.Rms;
-		}
-		ACC_D = (double)ACC_D/BuffCount;
-
-		////////////////////////////////
-
-   		RES_DIS = (double) 50712*1.41*(ACC_D/KUS_DIS)/(reg_frequency*reg_frequency*0.1);
-		Reg_DIS_D = (double)reg_displacement;
-		KUS_3 = (double)Reg_DIS_D/RES_DIS;					
-		KUS_DIS_DR = KUS_DIS_DR * KUS_3;		  						  						  	
-		if(KUS_DIS_DR >= 20000)
-      	{
-      		KUS_DIS_DR = 20000;
-      	}        	           	      
-      	spi_Kus(KUS_DIS_DR);      
- 	}
-	else
+	while (1 > 0)
 	{
-		PrevChnlData.Avg=0.0;
-		//PrevChnlData.Rms=0.0;
+		BuffCount = 480/reg_frequency+1;
+		switch (regim)
+		{
+			//Acceleration Mode
+			case 1113: case 1114:
+				PrevChnlData = ReadAccData(BuffCount, PrevChnlData);
+				RES_ACC =(double)PrevChnlData.Rms/KUS_ACC;
+				Reg_ACC_D = (double)reg_acseleration;
+				KUS_1 = (double)Reg_ACC_D/RES_ACC;
+				KUS_ACC_DR = KUS_ACC_DR * KUS_1;
+				if(KUS_ACC_DR >= 21483) KUS_ACC_DR = 21483;
+				spi_Kus(KUS_ACC_DR);
+				break;
+			//Velosity mode
+			case 1123: case 1124:
+				PrevChnlData = ReadAccData(BuffCount, PrevChnlData);
+				RES_VEL = (double) 112.5*1.41*(PrevChnlData.Rms/KUS_VEL)/(reg_frequency*0.1);
+				Reg_VEL_D = (double)reg_velosity;
+				KUS_2 = (double)Reg_VEL_D/RES_VEL;
+				KUS_VEL_DR = KUS_VEL_DR * KUS_2;
+				if(KUS_VEL_DR >= 21483) KUS_VEL_DR = 21483;
+				spi_Kus(KUS_VEL_DR);
+				break;
+			//Displacement mode
+			case 1133: case 1134:
+				PrevChnlData = ReadAccData(BuffCount, PrevChnlData);
+				RES_DIS = (double) 50712*1.41*(ACC_D/KUS_DIS)/(reg_frequency*reg_frequency*0.1);
+				Reg_DIS_D = (double)reg_displacement;
+				KUS_3 = (double)Reg_DIS_D/RES_DIS;
+				KUS_DIS_DR = KUS_DIS_DR * KUS_3;
+				if(KUS_DIS_DR >= 21483) KUS_DIS_DR = 20000;
+				spi_Kus(KUS_DIS_DR);
+				break;
+			default:
+				if (StandStatus == Stand_Stoping)
+				{
+					KUS_ACC_DR = KUS_ACC_DR*0.95;
+					if (KUS_ACC_DR > 1)
+					{
+						spi_Kus(KUS_ACC_DR);
+						waitusec(5000);
+					}
+					else
+					{
+						spi_Kus(0);
+						TAS5424_OFF();
+						LaserOFF();
+						StandStatus = Stand_Idle;
+						PrevChnlData.Avg=0.0;
+						PrevChnlData.Rms=0.0;
+					}
+				}
+				break;
+		}
+		cmd[0] = 0x02;
+		cmd[1] = 0x1f;	      	//cmd[1] = 0x11;
+		USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 2 );
 	}
-	cmd[0] = 0x02;
-	cmd[1] = 0x1f;	      	//cmd[1] = 0x11;
-	USBSTK5515_I2C_write( TCA8418_I2C_ADDR, cmd, 2 );
-}
-
 }
 
 

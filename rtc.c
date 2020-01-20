@@ -50,7 +50,7 @@ Uint16 Conunt_RTC =0;
 void enable_rtc_second_int(void)
 {
     RTC_CTR = 1;
-    RTC_INT = 0x0002;           // enalbe  second int  0x8002;  
+    RTC_INT = 0x0002;           // enalbe  second int  0x8002;
 }
 
 

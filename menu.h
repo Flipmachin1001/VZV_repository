@@ -33,6 +33,8 @@ double Ccalc_operand_1=0;
 double Ccalc_operand_2=0;
 double Ccalc_rezult=0;
 
+int PCF8574Test, LM73Adr1Test, LM73Adr2Test, LM73Adr3Test, KeyBoardTest, PowerAmplTest, BatRTest;
+
 void EnableTarget1(void)
 {
         		fillCirclen(20,41,11,RED);
@@ -1913,7 +1915,7 @@ void PrintAboutScreen()
 		print("    ÂÇÂ2  ",24,90+20,FontRus16x28,WHITE,BLUE_T);
 	else
 		print("   ÂÇÂ2  ",24,90+20,FontRus16x28,WHITE,BLUE_T);
-	print("Âåðñèÿ ÏÎ 20.0108",90,160,FontRus8x15,WHITE,BLUE_T);
+	print("Âåðñèÿ ÏÎ 20.0115",90,160,FontRus8x15,WHITE,BLUE_T);
 	print("ÎÎÎ ÍÏÔ ÂÈÁÐÎÍ 2020(ñ)",80,210,FontRus8x15,WHITE,BLUE_T);
 
 	//drawBitmap8bit(80,120,115,80,Vibron_logo);
@@ -2027,6 +2029,33 @@ void ChangeFreq(int x)
 
 	if (code!=9999) LCD_Freq(reg_frequency,BLACK);
 }
+
+void PrintDebugInfo()
+{
+	LCD_Clear(BLUE_B);
+	LCD_Rectangle(0,0,319,19,BLACK);
+	print("PCF8474",1,20,Font16x24,WHITE,BLUE_B);
+	printNumI(PCF8574Test,150,20,Font16x24,WHITE,BLUE_B);
+
+	print("LM73-1",1,44,Font16x24,WHITE,BLUE_B);
+	printNumI(LM73Adr1Test,150,44,Font16x24,WHITE,BLUE_B);
+
+	print("LM73-2",1,68,Font16x24,WHITE,BLUE_B);
+	printNumI(LM73Adr2Test,150,68,Font16x24,WHITE,BLUE_B);
+
+	print("LM73-3",1,92,Font16x24,WHITE,BLUE_B);
+	printNumI(LM73Adr3Test,150,92,Font16x24,WHITE,BLUE_B);
+
+	print("KeyBrd",1,116,Font16x24,WHITE,BLUE_B);
+	printNumI(KeyBoardTest,150,116,Font16x24,WHITE,BLUE_B);
+
+	print("PwrAmp",1,140,Font16x24,WHITE,BLUE_B);
+	printNumI(PowerAmplTest,150,140,Font16x24,WHITE,BLUE_B);
+
+	print("PwrRst",1,164,Font16x24,WHITE,BLUE_B);
+	printNumI(BatRTest,150,164,Font16x24,WHITE,BLUE_B);
+}
+
 
 
 

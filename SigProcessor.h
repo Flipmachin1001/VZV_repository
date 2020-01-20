@@ -150,7 +150,7 @@ double GetKUSFromTable(AccTable Table, Uint16 Freq, float Acceleration)
 		}
 	}
 
-	if (Freq > 1000) return (float)(Table.Records[Table.length-1].Kus)/1000;
+	if (Freq > MAX_FREQ*0.1) return (float)(Table.Records[Table.length-1].Kus)/1000;
 
 	if (Table.length == 0) return 1.0;
 	else
