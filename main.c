@@ -2162,8 +2162,10 @@ ChnlData ReadAccData(int BuffCount, ChnlData PrevChnlData)
 
 void main(void)
 {
+	//Тетсовый комментарий
 	SYS_GlobalIntDisable();
 	Uint32 i,j;
+	Uint32 z;
 	IsSleep = 0;
 	EnergySaveTime = 30000;
 	int BuffCount = 1;
