@@ -85,6 +85,21 @@ Int16 UART_TX_Char(Uint8 data1,Uint8 data2)
 }
 
 
+int16 UART_TX_WRITE_Param(Uint8 Adress, Uint8 Value)
+{
+	 while((UART_LSR & 0x60)==0);  		// Wait for TX ready
+	 UART_THR = 0x23;	// Write 1 byte #
+	 UART_THR = 0x30;   	// Write 2 byte	0
+	 UART_THR = 0x31;   	// Write 3 byte	1
+	 UART_THR = 'W';   		// Write 4 byte	W
+	 UART_THR = Adress;
+	 UART_THR = Value;
+	 UART_THR = 0x0D;   	// Write 6 byte <cr>
+
+
+	 return 0;
+}
+
 
 // ------------------------------------------------------------------------	*
 //                                                                         	*                                      

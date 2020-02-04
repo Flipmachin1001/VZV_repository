@@ -58,6 +58,17 @@
 #define RIHT 	162    				// RIHT
 #define RIGHT_UP 34					// RIGHT_UP
 
+void SYS_GlobalIntEnable(void)
+{
+    asm(" BIT (ST1, #ST1_INTM) = #0");
+}
+
+void SYS_GlobalIntDisable(void)
+{
+    asm(" BIT (ST1, #ST1_INTM) = #1");
+}
+
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -302,15 +313,7 @@ void InitSystem(void)
 
 Uint16 fSineWave = 0;
 
-void SYS_GlobalIntEnable(void)
-{
-    asm(" BIT (ST1, #ST1_INTM) = #0");
-}
 
-void SYS_GlobalIntDisable(void)
-{
-    asm(" BIT (ST1, #ST1_INTM) = #1");
-}
 
 void enable_sar_int(void)
 {
@@ -328,7 +331,6 @@ interrupt void INT1_Isr(void) {}
 
 //			        Прерывание от клаивиатуры								*
 //  ----------------------------------------------------------------------- *
-char FREQ_MODE = 0;
 
 void KeyBoardEvent(char Key, char FREQ_MODE)
 {
@@ -514,7 +516,7 @@ case 1113: case 11132:
    {
    	   case MENU: 	PrintMainMenu(0); break;
    	   case LEFT:
-   		   	   	   reg_frequency--;
+   		   	   	   if (FREQ_MODE == 0) reg_frequency--;
    		   	   	   LCD_Freq(reg_frequency,BLACK);
    		   	   	   if(reg_frequency > LaserStartFreq)
    		   	   	   {
@@ -528,7 +530,6 @@ case 1113: case 11132:
    		   	   	   }
    		   	   	   KUS_ACC = GetKUSFromTable(AccelarationTable,reg_frequency/10,(float)reg_acseleration/10);
    		   	   	   spi_sin(reg_frequency);
-
    		   	   	   break;
    	   case RIHT:
    			 	   if(code == Calibr_CODE) Save_All_Coeff();
@@ -2162,10 +2163,8 @@ ChnlData ReadAccData(int BuffCount, ChnlData PrevChnlData)
 
 void main(void)
 {
-	//Тетсовый комментарий
 	SYS_GlobalIntDisable();
 	Uint32 i,j;
-	Uint32 z;
 	IsSleep = 0;
 	EnergySaveTime = 30000;
 	int BuffCount = 1;
@@ -2193,24 +2192,24 @@ void main(void)
     USBSTK5515_I2C_reset();     						// i2c reset
     waitusec(65000);
     print("Загрузка...",110,90,FontRus8x15,WHITE,BLUE_B);
-    LCD_Rectangle(20,110,30,130,WHITE);
+    LCD_Rectangle(20,110,30,130,YELLOW_K);
     //инициализация расширителя портов
     PCF8574Test = PCF8574_INIT();
-    LCD_Rectangle(20,110,40,130,WHITE);
+    LCD_Rectangle(20,110,40,130,YELLOW_K);
     //Инициализация датчиков тока и напряжения
     LM73Adr1Test = LM73_INIT(LM73_I2C_ADDR1);
     LM73Adr2Test = LM73_INIT(LM73_I2C_ADDR2);
     LM73Adr3Test = LM73_INIT(LM73_I2C_ADDR3);
-	LCD_Rectangle(20,110,60,130,WHITE);
+	LCD_Rectangle(20,110,60,130,YELLOW_K);
 	//Инициализация контроллера клавиатуры
     KeyBoardTest = TCA8418_INIT();
-    LCD_Rectangle(20,110,80,130,WHITE);
+    LCD_Rectangle(20,110,80,130,YELLOW_K);
     //Инициализация усилителя мощности
     PowerAmplTest = TAS5424_INIT();
-	LCD_Rectangle(20,110,100,130,WHITE);
+	LCD_Rectangle(20,110,100,130,YELLOW_K);
     //Инициализация потенциометра
     BatRTest = AD5272_INIT();
-	LCD_Rectangle(20,110,140,130,WHITE);
+	LCD_Rectangle(20,110,140,130,YELLOW_K);
 	//
     setDMA_address();
     set_i2s0_slave();
@@ -2219,7 +2218,7 @@ void main(void)
 	enable_i2s0();			
     enable_dma_int();
 	set_dma0_ch2_i2s0_Lin_non();
-	LCD_Rectangle(20,110,250,130,WHITE);
+	LCD_Rectangle(20,110,250,130,YELLOW_K);
 	if (debugMode != 0) PrintDebugInfo();
 	else
 	{
@@ -2243,7 +2242,7 @@ void main(void)
 
 	while (1 > 0)
 	{
-		BuffCount = 480/reg_frequency+1;
+		BuffCount = 960/reg_frequency+1;
 		switch (regim)
 		{
 			//Acceleration Mode

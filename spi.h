@@ -11,18 +11,9 @@
 #ifndef spi_
 #define spi_
 
-
-
-
-		
-
 static Uint16 spirombuf[spirom_PAGESIZE + 8];
 
 static Uint16 statusbuf[20];
-
-
-
-
 /* ------------------------------------------------------------------------ *
  *  spirom_init( )                                                          *
  * ------------------------------------------------------------------------ */
@@ -49,7 +40,6 @@ void spirom_init( )
 	
     return;
 }
-
 
 
 /* ------------------------------------------------------------------------ *
@@ -243,195 +233,73 @@ Int16 spirom_test( )
 }
 
 
-
-
-
 void spi_sin( Uint32 Frequency )
 {          
-    	Uint32 FregR=0;  
-    	
+    	Uint16 buf[20];
+		Uint32 FregR=0;
+		SYS_GlobalIntDisable();
     	SPI_SPIDC1 =   0x0001;
-    	//////////////////////////////////////////////////////////////////////////                          
-    	                          
-    	//FregR = (double)(Frequency * 8192);  //при 32768 к√ц
-    	                                                                                           
         FregR = (double)(Frequency / 0.4470348358154296875); //было при 12 ћ√ц
-        
-        //////////////////////////////////////////////////////////////////////////
-        
-        
-        
-        
-        	      		      		      		   	   	 		 
-		statusbuf[3] = FregR;
-		statusbuf[2] = ((((FregR>>8)&0x3F))|0x40);	
-    	statusbuf[5] = FregR>>14;
-		statusbuf[4] = ((((FregR>>22)&0x3F))|0x40);	   
-		   		  		      	
-  		EVM5515_GPIO_setOutput(5,0);
+        EVM5515_GPIO_setOutput(5,0);
   		waitusec( 100 );
-  		    		    		 
-    		statusbuf[0] = 0x21;	
-    		statusbuf[1] = 0x00;    		        		
-    		//statusbuf[2] = 0x40;	//REG 0 LSB H
-    		//statusbuf[3] = 0x00;  //REG 0 LSB L    		
-    		//statusbuf[4] = 0x40;	//REG 0 MSB H
-    		//statusbuf[5] = 0x02;	//REG 0 MSB L    		
-    		statusbuf[6] = 0x20;	
-    		statusbuf[7] = 0x00;    	    		    	    		    		        		    		    	    		    		    		     				    		    		    	    		    		    	    		    		    	    		    		     				  		  	  			 										
-			if (spirom_cycle(statusbuf, 8) != 0) print("„аст!",160,0,FontRus8x15,RED,BLACK);;
-			
-			waitusec( 100 ); 
-										    		     				    		  
-     	EVM5515_GPIO_setOutput(5,1);	
-     	
-//print("          ",0,50,Num8x8,WHITE,BLACK); 
-//printNumUI( FregR,0,50,Num8x8,WHITE,BLACK);	
-
-//print("          ",60,50,Num8x8,WHITE,BLACK); 
-//printNumUI( FregR,60,50,Num8x8,WHITE,BLACK);	
-     	
-     	
+    	buf[0] = 0x21;
+    	buf[1] = 0x00;
+    	buf[3] = FregR;
+    	buf[2] = ((((FregR>>8)&0x3F))|0x40);
+    	buf[5] = FregR>>14;
+    	buf[4] = ((((FregR>>22)&0x3F))|0x40);
+    	buf[6] = 0x20;
+    	buf[7] = 0x00;
+		if (spirom_cycle(buf, 8) != 0) ;
+		waitusec( 100 );
+     	EVM5515_GPIO_setOutput(5,1);
+     	SYS_GlobalIntEnable();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void spi_Kus( Uint16 TempKus )
-{          						
-		//Uint16 FregR=0; 
-		
-		SPI_SPIDC1 =   0x0005;
-				
-
-		
-		statusbuf[2] = TempKus;
-		statusbuf[1] = ((TempKus>>8)&0x03);	
-				  						             
-        EVM5515_GPIO_setOutput(4,0); 
-               	    		
-        waitusec( 100 );        	    		
-               	    		
-		statusbuf[0] = 0xb0;    	        
-    	//statusbuf[1] = 0x00;
-    	//statusbuf[2] = 0x00;   	    		        		   	    	    		    		        		    		    	    		    		    		     				    		    		    	    		    		    	    		    		    	    		    		     				  		  	  			 								
-		spirom_cycle(statusbuf, 3);
-				
-		waitusec( 100 ); 		
-					
-		EVM5515_GPIO_setOutput(4,1);												    		
-}
-*/
-
-
-
-/////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////
-
-
-
-
-
-
 
 
 void spi_Kus( Uint16 TempKus)
 {          						
-		 
-		 
-		Uint16 TempKus1;
-		Uint16 TempKus2;
-		Uint16 TempKus3;
-		Uint16 TempKus4;	
-
-
-		/*print(" оэфф.усилени€: ", 0, 50, FontRus8x15, WHITE, BLUE_B);
-		printNumF(TempKus,'.',140,50,FontRus8x15,WHITE, BLUE_B);*/
-
-
-
-
-		TempKus  = TempKus / 10;
-		
-		if( TempKus > 1023)
-		{
-			TempKus3 = 1023;
-			TempKus2 = TempKus-1023;
-			if (TempKus2 > 1023)
-			{
-				TempKus2 = 1023;
-			}
-		}		
-		else
-		{		
-			TempKus3 = TempKus;			
-			TempKus2 = 0;				
-		}
-				
-		TempKus1 = 1023;
-		
-		if (TempKus > 20460)
-		{
-			TempKus4 = TempKus-20460;
-		}
+	Uint16 buf[20];
+	Uint16 TempKus1;
+	Uint16 TempKus2;
+	Uint16 TempKus3;
+	Uint16 TempKus4;
+	SYS_GlobalIntDisable();
+	TempKus  = TempKus / 10;
+	if( TempKus > 1023)
+	{
+		TempKus3 = 1023;
+		TempKus2 = TempKus-1023;
+		if (TempKus2 > 1023) TempKus2 = 1023;
+	}
+	else
+	{
+		TempKus3 = TempKus;
+		TempKus2 = 0;
+	}
+	TempKus1 = 1023;
+	if (TempKus > 20460) TempKus4 = TempKus-20460;
 		else TempKus4 = TempKus % 10;
 
-
-		SPI_SPIDC1 =   0x0005;
-																	
-        EVM5515_GPIO_setOutput(4,0);
-         		
-        waitusec( 100 );
-        		
-        		
-        		
-		statusbuf[0] = 0xb0; 
-		statusbuf[1] = ((TempKus4>>8)&0x03);	
-		statusbuf[2] = TempKus4;
-
-    	statusbuf[3] = 0xb0; 
-		statusbuf[4] = ((TempKus3>>8)&0x03);	
-		statusbuf[5] = TempKus3; 	    		      
-    	   	    		          	   	    		      
-    	statusbuf[6] = 0xb0; 
-		statusbuf[7] = ((TempKus2>>8)&0x03);	
-		statusbuf[8] = TempKus2; 
-    	   	    	
-		statusbuf[9] = 0xb0; 
-		statusbuf[10]= ((TempKus1>>8)&0x03);	
-		statusbuf[11]= TempKus1;     	   	    	
-    	   	    
-		if (spirom_cycle(statusbuf, 12) != 0)
-			print(" ус!",160,0,FontRus8x15,RED,BLACK);
-		
-		//
-
-
-        waitusec( 100 );
-        					
-		EVM5515_GPIO_setOutput(4,1);	
-		
-		
-		
-
-													    		
+	SPI_SPIDC1 =   0x0005;
+	EVM5515_GPIO_setOutput(4,0);
+	waitusec( 100 );
+	buf[0] 	= 0xb0;
+	buf[1] 	= ((TempKus4>>8)&0x03);
+	buf[2] 	= TempKus4;
+	buf[3] 	= 0xb0;
+	buf[4] 	= ((TempKus3>>8)&0x03);
+	buf[5] 	= TempKus3;
+	buf[6] 	= 0xb0;
+	buf[7] 	= ((TempKus2>>8)&0x03);
+	buf[8] 	= TempKus2;
+	buf[9] 	= 0xb0;
+	buf[10]	= ((TempKus1>>8)&0x03);
+	buf[11]	= TempKus1;
+	if (spirom_cycle(buf, 12) != 0) ;
+	waitusec( 100 );
+	EVM5515_GPIO_setOutput(4,1);
+	SYS_GlobalIntEnable();
 }
 
 
@@ -448,27 +316,17 @@ void spi_Kus( Uint16 TempKus)
 void spi_Kus4( Uint16 TempKus )
 {          						
 		 
-		
 		SPI_SPIDC1 =   0x0005;
-																	
-        EVM5515_GPIO_setOutput(4,0); 		
-		
-        waitusec( 100 );		
-		
+        EVM5515_GPIO_setOutput(4,0);
+        waitusec( 100 );
 		statusbuf[0] = 0xb1; 
 		statusbuf[1] = 0;	
 		statusbuf[2] = TempKus&0x07;
-
     	statusbuf[3] = 0xb1; 
 		statusbuf[4] = ((TempKus>>11)&0x03);		
 		statusbuf[5] = TempKus>>3;	    		      
-    	
-    	   	    		      
-    	   	    		        		   	    	    		    		        		    		    	    		    		    		     				    		    		    	    		    		    	    		    		    	    		    		     				  		  	  			 								
 		spirom_cycle(statusbuf, 6);
-					
-        waitusec( 100 );					
-					
+        waitusec( 100 );
 		EVM5515_GPIO_setOutput(4,1);												    		
 }
 

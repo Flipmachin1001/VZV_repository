@@ -1910,12 +1910,12 @@ void PrintAboutScreen()
 {
     LCD_Clear_1(BLUE_T);
 	fillRoundRect(10,31,309,229,BLUE_T);
-	print("    бхапняремд   ",16,50+20,FontRus16x28,WHITE,BLUE_T);
+	print("    бхапняремд   ",16,50+20,FontRus16x28,YELLOW_K,BLUE_T);
 	if (LaserStartFreq == 0)
-		print("    бгб2  ",24,90+20,FontRus16x28,WHITE,BLUE_T);
+		print("    бгб2  ",24,90+20,FontRus16x28,YELLOW_K,BLUE_T);
 	else
 		print("   бгб2  ",24,90+20,FontRus16x28,WHITE,BLUE_T);
-	print("бЕПЯХЪ он 20.0115",90,160,FontRus8x15,WHITE,BLUE_T);
+	print("бЕПЯХЪ он 20.0121",90,160,FontRus8x15,WHITE,BLUE_T);
 	print("ннн мот бхапнм 2020(Я)",80,210,FontRus8x15,WHITE,BLUE_T);
 
 	//drawBitmap8bit(80,120,115,80,Vibron_logo);
